@@ -33,6 +33,7 @@ import com.example.data.ActfileWithUser
 import com.example.ui.IddetViewModel
 import com.example.ui.components.ActfileCard
 import com.example.ui.components.VerificationBadge
+import com.example.ui.components.MarkdownEditor
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -268,16 +269,13 @@ fun ActfileComposer(
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
+            MarkdownEditor(
                 value = content,
                 onValueChange = { content = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(150.dp),
-                placeholder = { Text("Write your markdown actfile here...\n\nHint: [IMG](https://url)") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                )
+                    .weight(1f),
+                placeholder = "Write your markdown actfile here...\n\nHint: Use the toolbar for bold, links, etc."
             )
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
@@ -299,9 +297,9 @@ fun ActfileComposer(
                     .height(50.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Publish")
+                Text("Publish Actfile")
             }
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

@@ -118,7 +118,19 @@ data class ActfileCommentListResponse(
     val is_verified: Boolean
 )
 
+data class UpdateProfileRequest(
+    val bio: String? = null,
+    val avatar_url: String? = null,
+    val username: String? = null
+)
+
 interface ApiService {
+    @POST("/api/users/profile")
+    suspend fun updateProfile(
+        @retrofit2.http.Header("Authorization") token: String,
+        @Body request: UpdateProfileRequest
+    ): UserProfileNetwork
+
     @FormUrlEncoded
     @POST("/api/token")
     suspend fun login(

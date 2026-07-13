@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.text.style.TextAlign
@@ -36,13 +37,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.ui.IddetViewModel
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import com.example.ui.components.VerificationBadge
 import com.example.ui.components.ActfileCard
+import com.example.ui.components.MarkdownEditor
+import com.example.ui.components.OpenGraphPreview
+import com.example.data.UserProfileNetwork
+import com.example.data.UpdateProfileRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     
     // Safe check
     if (currentUser == null) return
@@ -76,6 +84,14 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                         ) {
                             Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                         }
+                    }
+                    IconButton(onClick = { 
+                        scope.launch {
+                            viewModel.refreshProfile()
+                            Toast.makeText(context, "Profil actualisé !", Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Profile")
                     }
                     IconButton(onClick = { viewModel.logout() }) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
@@ -365,6 +381,7 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
     if (showEditDialog) {
         var editedUsername by remember { mutableStateOf(user.username) }
         var editedBio by remember { mutableStateOf(user.bio) }
+        var editedAvatarUrl by remember { mutableStateOf(user.avatarUrl ?: "") }
         var editedPrivacy by remember { mutableStateOf(user.privacySetting) }
         var editedEmail by remember { mutableStateOf(user.email ?: "") }
         var editedPhone by remember { mutableStateOf(user.phoneNumber ?: "") }
@@ -382,6 +399,13 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                         value = editedUsername,
                         onValueChange = { editedUsername = it },
                         label = { Text("Nom d'utilisateur") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editedAvatarUrl,
+                        onValueChange = { editedAvatarUrl = it },
+                        label = { Text("URL de l'avatar") },
+                        placeholder = { Text("https://example.com/image.png") },
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
@@ -448,6 +472,7 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
 
                     viewModel.updateProfile(
                         username = editedUsername,
+                        avatarUrl = editedAvatarUrl,
                         bio = editedBio,
                         privacySetting = editedPrivacy,
                         email = editedEmail,
@@ -455,6 +480,7 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                         birthDate = editedBirthDate,
                         zodiacSign = calculatedZodiac
                     )
+                    Toast.makeText(context, "Profil mis à jour !", Toast.LENGTH_SHORT).show()
                     showEditDialog = false
                 }) {
                     Text("Enregistrer")

@@ -36,6 +36,12 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         }
     }
 
+    fun refreshProfile() {
+        viewModelScope.launch {
+            repository.refreshProfile()
+        }
+    }
+
     init {
         viewModelScope.launch {
             repository.refreshActfiles()
@@ -121,6 +127,7 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
 
     fun updateProfile(
         username: String? = null,
+        avatarUrl: String? = null,
         bio: String,
         privacySetting: String,
         email: String? = null,
@@ -129,7 +136,7 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         zodiacSign: String? = null
     ) {
         viewModelScope.launch {
-            repository.updateProfile(username, bio, privacySetting, email, phoneNumber, birthDate, zodiacSign)
+            repository.updateProfile(username, avatarUrl, bio, privacySetting, email, phoneNumber, birthDate, zodiacSign)
         }
     }
 

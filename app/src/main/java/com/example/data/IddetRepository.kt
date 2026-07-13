@@ -61,6 +61,43 @@ class IddetRepository(
         }
     }
 
+    suspend fun refreshProfile() {
+        val userId = prefs.getString("user_id", null) ?: return
+        try {
+            val token = currentToken
+            if (token != null) {
+                val profile = RetrofitClient.apiService.getMyProfile("Bearer $token")
+                val existing = userDao.getUserById(userId)
+                val updatedUser = if (existing != null) {
+                    existing.copy(
+                        username = profile.username,
+                        avatarUrl = profile.avatar_url,
+                        bio = profile.bio ?: existing.bio,
+                        isVerified = profile.is_verified,
+                        followingCount = profile.following_count,
+                        followersCount = profile.followers_count
+                    )
+                } else {
+                    User(
+                        id = profile.id,
+                        username = profile.username,
+                        passwordHash = "mocked",
+                        avatarUrl = profile.avatar_url,
+                        bio = profile.bio ?: "Welcome to my profile!",
+                        isVerified = profile.is_verified,
+                        followingCount = profile.following_count,
+                        followersCount = profile.followers_count,
+                        isGiant = (profile.username.length > 5)
+                    )
+                }
+                userDao.insertUser(updatedUser)
+                _currentUser.value = updatedUser
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun parseIso(date: String?): Long {
         if (date == null) return System.currentTimeMillis()
         return try {
@@ -171,6 +208,7 @@ class IddetRepository(
 
     suspend fun updateProfile(
         username: String? = null,
+        avatarUrl: String? = null,
         bio: String,
         privacySetting: String,
         email: String? = null,
@@ -181,6 +219,7 @@ class IddetRepository(
         val user = _currentUser.value ?: return
         val updatedUser = user.copy(
             username = username ?: user.username,
+            avatarUrl = avatarUrl ?: user.avatarUrl,
             bio = bio,
             privacySetting = privacySetting,
             email = email ?: user.email,
@@ -190,6 +229,23 @@ class IddetRepository(
         )
         userDao.updateUser(updatedUser)
         _currentUser.value = updatedUser
+
+        // Sync with server if possible
+        try {
+            val token = currentToken
+            if (token != null) {
+                RetrofitClient.apiService.updateProfile(
+                    token = "Bearer $token",
+                    request = UpdateProfileRequest(
+                        bio = bio,
+                        username = username,
+                        avatar_url = avatarUrl
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun logout() {
