@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.example.data.ActfileComment
 import com.example.data.ActfileWithUser
 import com.example.ui.IddetViewModel
@@ -106,14 +108,23 @@ fun DiscussionScreen(
                                             modifier = Modifier
                                                 .size(40.dp)
                                                 .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primary),
+                                                .background(MaterialTheme.colorScheme.primaryContainer),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = post.username.firstOrNull()?.toString()?.uppercase() ?: "?",
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                            if (!post.avatarUrl.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = post.avatarUrl,
+                                                    contentDescription = "Profile Picture",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = post.username.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                         }
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column {
@@ -296,15 +307,24 @@ fun DiscussionScreen(
                                         modifier = Modifier
                                             .size(32.dp)
                                             .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.secondary),
+                                            .background(MaterialTheme.colorScheme.secondaryContainer),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = comment.username.firstOrNull()?.toString()?.uppercase() ?: "?",
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
+                                        if (!comment.avatarUrl.isNullOrBlank()) {
+                                            AsyncImage(
+                                                model = comment.avatarUrl,
+                                                contentDescription = "Profile Picture",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            Text(
+                                                text = comment.username.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
                                     }
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(

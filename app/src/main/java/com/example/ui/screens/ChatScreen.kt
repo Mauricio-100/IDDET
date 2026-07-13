@@ -16,6 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.example.ui.components.MarkdownActfile
 import com.example.ui.components.VoiceRecorderUI
 import androidx.compose.foundation.shape.CircleShape
@@ -60,7 +63,35 @@ fun ChatScreen(viewModel: IddetViewModel, navController: NavController, userId: 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(partner!!.username, fontWeight = FontWeight.Bold) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!partner!!.avatarUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = partner!!.avatarUrl,
+                                    contentDescription = "Profile Picture",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    text = partner!!.username.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(partner!!.username, fontWeight = FontWeight.Bold)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

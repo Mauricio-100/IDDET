@@ -42,8 +42,13 @@ jobs:
            gradle assembleDebug
          fi
 
-    - name: Upload Debug APK Artifact
+    - name: Prepare Artifact
+      run: |
+        mkdir -p build-output
+        cp app/build/outputs/apk/debug/app-debug.apk build-output/iddet-con.apk
+
+    - name: Upload IDDET-CON APK
       uses: actions/upload-artifact@v4
       with:
-        name: STRIP-Debug-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: iddet-con-apk
+        path: build-output/iddet-con.apk

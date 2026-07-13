@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.example.data.User
 import com.example.ui.IddetViewModel
 import com.example.ui.components.ActfileCard
@@ -191,14 +193,23 @@ fun UserCard(user: User, isFollowing: Boolean, onFollowClick: () -> Unit, onClic
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = user.username.firstOrNull()?.toString()?.uppercase() ?: "?",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
+            if (!user.avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = user.avatarUrl,
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Text(
+                    text = user.username.firstOrNull()?.toString()?.uppercase() ?: "?",
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {

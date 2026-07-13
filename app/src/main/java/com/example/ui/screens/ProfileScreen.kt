@@ -39,6 +39,7 @@ import androidx.navigation.NavController
 import com.example.ui.IddetViewModel
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import coil.compose.AsyncImage
 import com.example.ui.components.VerificationBadge
 import com.example.ui.components.ActfileCard
 import com.example.ui.components.MarkdownEditor
@@ -60,7 +61,7 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
     
     var showEditDialog by remember { mutableStateOf(false) }
     var showVerificationDialog by remember { mutableStateOf(false) }
-    var commentDialogTarget by remember { mutableStateOf<String?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
     
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     val scope = rememberCoroutineScope()
@@ -85,13 +86,23 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                             Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                         }
                     }
-                    IconButton(onClick = { 
-                        scope.launch {
-                            viewModel.refreshProfile()
-                            Toast.makeText(context, "Profil actualisé !", Toast.LENGTH_SHORT).show()
+                    IconButton(
+                        onClick = { 
+                            scope.launch {
+                                isRefreshing = true
+                                viewModel.refreshProfile()
+                                delay(500)
+                                isRefreshing = false
+                                Toast.makeText(context, "Profil actualisé !", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = !isRefreshing
+                    ) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh Profile")
                         }
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Profile")
                     }
                     IconButton(onClick = { viewModel.logout() }) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
@@ -191,15 +202,24 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = user.username.firstOrNull()?.toString()?.uppercase() ?: "?",
-                            color = Color.White,
-                            style = MaterialTheme.typography.displaySmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (!user.avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = user.avatarUrl,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                text = user.username.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {

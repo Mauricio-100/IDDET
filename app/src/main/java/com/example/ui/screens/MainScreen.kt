@@ -24,6 +24,11 @@ fun MainScreen(viewModel: IddetViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshProfile()
+        viewModel.refreshActfiles()
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar(

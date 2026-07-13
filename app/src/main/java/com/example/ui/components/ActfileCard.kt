@@ -19,6 +19,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.example.ui.components.MarkdownActfile
 import com.example.ui.components.VerificationBadge
 import com.example.data.ActfileWithUser
@@ -65,14 +67,23 @@ fun ActfileCard(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = actfile.username.firstOrNull()?.toString()?.uppercase() ?: "?",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (!actfile.avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = actfile.avatarUrl,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                text = actfile.username.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
