@@ -46,6 +46,15 @@ import com.example.ui.components.MarkdownEditor
 import com.example.ui.components.OpenGraphPreview
 import com.example.data.UserProfileNetwork
 import com.example.data.UpdateProfileRequest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.core.content.FileProvider
+import java.io.File
+import android.net.Uri
+import android.Manifest
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +70,50 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
     
     var showEditDialog by remember { mutableStateOf(false) }
     var showVerificationDialog by remember { mutableStateOf(false) }
+    var showImageOptions by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+    
+    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            if (uri != null) {
+                viewModel.updateProfile(avatarUrl = uri.toString(), bio = user.bio, privacySetting = user.privacySetting)
+                Toast.makeText(context, "Photo mise à jour !", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success && capturedImageUri != null) {
+                viewModel.updateProfile(avatarUrl = capturedImageUri.toString(), bio = user.bio, privacySetting = user.privacySetting)
+                Toast.makeText(context, "Photo prise et mise à jour !", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    fun createImageUri(): Uri {
+        val directory = File(context.cacheDir, "images")
+        directory.mkdirs()
+        val file = File.createTempFile("profile_", ".jpg", directory)
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                val uri = createImageUri()
+                capturedImageUri = uri
+                cameraLauncher.launch(uri)
+            } else {
+                Toast.makeText(context, "Permission caméra refusée", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
     
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     val scope = rememberCoroutineScope()
@@ -202,7 +254,8 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable { showImageOptions = true },
                         contentAlignment = Alignment.Center
                     ) {
                         if (!user.avatarUrl.isNullOrBlank()) {
@@ -218,6 +271,21 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 style = MaterialTheme.typography.displaySmall,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                        
+                        // Edit overlay
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            Icon(
+                                Icons.Default.PhotoCamera,
+                                contentDescription = "Change Photo",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp).padding(bottom = 4.dp)
                             )
                         }
                     }
@@ -694,6 +762,65 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
             shape = RoundedCornerShape(28.dp),
             containerColor = MaterialTheme.colorScheme.surface
         )
+    }
+
+    if (showImageOptions) {
+        ModalBottomSheet(
+            onDismissRequest = { showImageOptions = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    "Changer la photo de profil",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                ListItem(
+                    headlineContent = { Text("Prendre une photo") },
+                    leadingContent = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        showImageOptions = false
+                        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.CAMERA
+                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            val uri = createImageUri()
+                            capturedImageUri = uri
+                            cameraLauncher.launch(uri)
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Choisir depuis la galerie") },
+                    leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        showImageOptions = false
+                    }
+                )
+                
+                if (!user.avatarUrl.isNullOrBlank()) {
+                    ListItem(
+                        headlineContent = { Text("Supprimer la photo", color = MaterialTheme.colorScheme.error) },
+                        leadingContent = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                        modifier = Modifier.clickable {
+                            viewModel.updateProfile(avatarUrl = "", bio = user.bio, privacySetting = user.privacySetting)
+                            showImageOptions = false
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 

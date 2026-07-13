@@ -20,12 +20,42 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.example.R
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.os.Build
+import androidx.compose.ui.platform.LocalContext
+
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
+    val context = LocalContext.current
     val scale = remember { Animatable(0f) }
     val opacity = remember { Animatable(0f) }
 
+    val permissionsToRequest = mutableListOf(
+        Manifest.permission.CAMERA,
+        Manifest.permission.RECORD_AUDIO,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ).apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            add(Manifest.permission.POST_NOTIFICATIONS)
+            add(Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // We proceed regardless of whether permissions were granted or not
+        // The app will handle missing permissions when specific features are used
+    }
+
     LaunchedEffect(key1 = true) {
+        permissionLauncher.launch(permissionsToRequest.toTypedArray())
+        
         // Animation sequence
         launch {
             scale.animateTo(
