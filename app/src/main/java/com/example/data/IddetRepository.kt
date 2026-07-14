@@ -3,6 +3,10 @@ package com.example.data
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -120,7 +124,33 @@ class IddetRepository(
             val header = currentToken?.let { "Bearer $it" }
             val netActfiles = RetrofitClient.apiService.getActfiles(header)
             
-            for (net in netActfiles) {
+            val actfilesWithComments = coroutineScope {
+                val deferreds = netActfiles.map { net ->
+                    async {
+                        val comments = try {
+                            val list = RetrofitClient.apiService.getActfileComments(header, net.id)
+                            list.map {
+                                ActfileComment(
+                                    id = it.id,
+                                    actfileId = net.id,
+                                    content = it.content,
+                                    userId = it.user_id,
+                                    username = it.username,
+                                    avatarUrl = it.avatar_url,
+                                    isVerified = it.is_verified,
+                                    createdAt = parseIso(it.created_at)
+                                )
+                            }
+                        } catch(e: Exception) {
+                            emptyList<ActfileComment>()
+                        }
+                        net to comments
+                    }
+                }
+                deferreds.awaitAll()
+            }
+
+            for ((net, comments) in actfilesWithComments) {
                 val existing = userDao.getUserById(net.user_id)
                 val user = if (existing != null) {
                     existing.copy(
@@ -139,6 +169,11 @@ class IddetRepository(
                 }
                 userDao.insertUser(user)
                 
+                if (comments.isNotEmpty()) {
+                    commentDao.deleteCommentsForActfile(net.id)
+                    commentDao.insertComments(comments)
+                }
+                
                 actfileDao.insertActfile(
                     Actfile(
                         id = net.id,
@@ -146,9 +181,10 @@ class IddetRepository(
                         content = net.content,
                         likesCount = net.likes_count,
                         viewsCount = net.views_count,
-                        commentsCount = net.comments_count ?: 0,
+                        commentsCount = comments.size,
                         createdAt = parseIso(net.created_at),
-                        isLikedByMe = net.liked
+                        isLikedByMe = net.liked,
+                        category = net.category
                     )
                 )
             }
@@ -214,7 +250,8 @@ class IddetRepository(
         email: String? = null,
         phoneNumber: String? = null,
         birthDate: String? = null,
-        zodiacSign: String? = null
+        zodiacSign: String? = null,
+        preferredCategory: String? = null
     ) {
         val user = _currentUser.value ?: return
         val updatedUser = user.copy(
@@ -225,7 +262,8 @@ class IddetRepository(
             email = email ?: user.email,
             phoneNumber = phoneNumber ?: user.phoneNumber,
             birthDate = birthDate ?: user.birthDate,
-            zodiacSign = zodiacSign ?: user.zodiacSign
+            zodiacSign = zodiacSign ?: user.zodiacSign,
+            preferredCategory = preferredCategory ?: user.preferredCategory
         )
         userDao.updateUser(updatedUser)
         _currentUser.value = updatedUser
@@ -239,7 +277,8 @@ class IddetRepository(
                     request = UpdateProfileRequest(
                         bio = bio,
                         username = username,
-                        avatar_url = avatarUrl
+                        avatar_url = avatarUrl,
+                        preferred_category = preferredCategory ?: user.preferredCategory
                     )
                 )
             }
@@ -254,7 +293,7 @@ class IddetRepository(
         prefs.edit().clear().apply()
     }
 
-    suspend fun publishActfile(content: String, tags: String = "") {
+    suspend fun publishActfile(content: String, tags: String = "", category: String? = null) {
         val user = _currentUser.value ?: return
         
         try {
@@ -262,7 +301,7 @@ class IddetRepository(
             if (header != null) {
                 val netActfile = RetrofitClient.apiService.publishActfile(
                     token = header,
-                    request = PublishActfileRequest(content = content)
+                    request = PublishActfileRequest(content = content, category = category)
                 )
                 actfileDao.insertActfile(
                     Actfile(
@@ -272,7 +311,8 @@ class IddetRepository(
                         tags = tags,
                         likesCount = netActfile.likes_count,
                         viewsCount = netActfile.views_count,
-                        createdAt = parseIso(netActfile.created_at)
+                        createdAt = parseIso(netActfile.created_at),
+                        category = netActfile.category ?: category
                     )
                 )
             } else {
@@ -280,7 +320,8 @@ class IddetRepository(
                     Actfile(
                         userId = user.id,
                         content = content,
-                        tags = tags
+                        tags = tags,
+                        category = category
                     )
                 )
             }
@@ -291,7 +332,8 @@ class IddetRepository(
                 Actfile(
                     userId = user.id,
                     content = content,
-                    tags = tags
+                    tags = tags,
+                    category = category
                 )
             )
         }
@@ -538,12 +580,16 @@ class IddetRepository(
         return userDao.getUserByIdFlow(userId)
     }
 
+    private val _conversations = MutableStateFlow<List<ConversationNetwork>>(emptyList())
+    val conversations: StateFlow<List<ConversationNetwork>> = _conversations.asStateFlow()
+
     suspend fun refreshConversations() {
         val userId = _currentUser.value?.id ?: return
         try {
             val header = currentToken?.let { "Bearer $it" }
             if (header != null) {
                 val res = RetrofitClient.apiService.getConversations(header)
+                _conversations.value = res
                 res.forEach { conv ->
                     val existing = userDao.getUserById(conv.user_id)
                     val partnerUser = if (existing != null) {
@@ -591,6 +637,7 @@ class IddetRepository(
                         senderId = it.sender_id,
                         receiverId = it.receiver_id,
                         content = it.content,
+                        type = it.type,
                         isRead = it.read,
                         createdAt = parseIso(it.created_at)
                     )
@@ -618,27 +665,28 @@ class IddetRepository(
         return messageDao.getMessagesBetween(myId, otherUserId)
     }
 
-    suspend fun sendMessage(receiverId: String, content: String) {
+    suspend fun sendMessage(receiverId: String, content: String, type: String = "text") {
         try {
             val header = currentToken?.let { "Bearer $it" }
             if (header != null) {
-                val res = RetrofitClient.apiService.sendMessage(header, SendMessageRequest(content = content, receiver_id = receiverId))
+                val res = RetrofitClient.apiService.sendMessage(header, SendMessageRequest(content = content, receiver_id = receiverId, type = type))
                 messageDao.insertMessage(Message(
                     id = res.id,
                     senderId = res.sender_id,
                     receiverId = res.receiver_id,
                     content = res.content,
+                    type = res.type,
                     isRead = res.read,
                     createdAt = parseIso(res.created_at)
                 ))
             } else {
                 val myId = _currentUser.value?.id ?: return
-                messageDao.insertMessage(Message(senderId = myId, receiverId = receiverId, content = content))
+                messageDao.insertMessage(Message(senderId = myId, receiverId = receiverId, content = content, type = type))
             }
         } catch (e: Exception) {
             e.printStackTrace()
             val myId = _currentUser.value?.id ?: return
-            messageDao.insertMessage(Message(senderId = myId, receiverId = receiverId, content = content))
+            messageDao.insertMessage(Message(senderId = myId, receiverId = receiverId, content = content, type = type))
         }
     }
 
@@ -724,6 +772,14 @@ class IddetRepository(
         }
     }
 
+    fun getLikedActfiles(): Flow<List<ActfileWithUser>> {
+        return actfileDao.getLikedActfiles()
+    }
+
+    fun getCommentedActfiles(userId: String): Flow<List<ActfileWithUser>> {
+        return actfileDao.getCommentedActfiles(userId)
+    }
+
     fun getNotifications(): Flow<List<Notification>> {
         val userId = _currentUser.value?.id ?: ""
         kotlinx.coroutines.GlobalScope.launch {
@@ -752,6 +808,45 @@ class IddetRepository(
                     )
                 }
                 notificationDao.insertNotifications(mapped)
+
+                // Real Android system notifications integration
+                val context = AppDatabase.appContext
+                if (context != null) {
+                    val shownNotifications = prefs.getStringSet("shown_notification_ids", emptySet())?.toMutableSet() ?: mutableSetOf()
+                    var updated = false
+                    mapped.filter { !it.isRead && !shownNotifications.contains(it.id) }.forEach { notif ->
+                        val route = when (notif.type) {
+                            "like", "comment" -> "discussion/${notif.targetId}"
+                            "message" -> "chat/${notif.fromUserId}"
+                            "follow" -> "profile/${notif.fromUserId}"
+                            else -> "notifications"
+                        }
+                        
+                        val title = when (notif.type) {
+                            "like" -> "💖 Utilité partagée !"
+                            "comment" -> "💬 Nouveau commentaire"
+                            "follow" -> "🎉 Nouvel abonné"
+                            "message" -> "💬 Message reçu"
+                            else -> "🔔 Nouvelle activité"
+                        }
+
+                        com.example.utils.NotificationHelper.showSystemNotification(
+                            context = context,
+                            notificationId = notif.id,
+                            title = title,
+                            text = notif.message,
+                            route = route,
+                            avatarUrl = notif.fromAvatar,
+                            senderName = notif.fromUsername
+                        )
+                        
+                        shownNotifications.add(notif.id)
+                        updated = true
+                    }
+                    if (updated) {
+                        prefs.edit().putStringSet("shown_notification_ids", shownNotifications).apply()
+                    }
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

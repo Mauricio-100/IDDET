@@ -51,7 +51,7 @@ interface ActfileDao {
     suspend fun insertActfile(actfile: Actfile)
 
     @Query("""
-        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe 
+        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe, a.category 
         FROM actfiles a 
         INNER JOIN users u ON a.userId = u.id 
         ORDER BY a.createdAt DESC
@@ -59,7 +59,7 @@ interface ActfileDao {
     fun getAllActfilesWithUser(): Flow<List<ActfileWithUser>>
 
     @Query("""
-        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe 
+        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe, a.category 
         FROM actfiles a 
         INNER JOIN users u ON a.userId = u.id 
         WHERE a.userId = :userId
@@ -68,7 +68,7 @@ interface ActfileDao {
     fun getActfilesByUser(userId: String): Flow<List<ActfileWithUser>>
 
     @Query("""
-        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe 
+        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe, a.category 
         FROM actfiles a 
         INNER JOIN users u ON a.userId = u.id 
         WHERE a.content LIKE '%' || :query || '%' OR a.tags LIKE '%' || :query || '%'
@@ -92,13 +92,32 @@ interface ActfileDao {
     suspend fun updateCommentCount(id: String, count: Int)
 
     @Query("""
-        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe 
+        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe, a.category 
         FROM actfiles a 
         INNER JOIN users u ON a.userId = u.id 
         WHERE a.id = :actfileId
         LIMIT 1
     """)
     fun getActfileById(actfileId: String): Flow<ActfileWithUser?>
+
+    @Query("""
+        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe, a.category 
+        FROM actfiles a 
+        INNER JOIN users u ON a.userId = u.id 
+        WHERE a.isLikedByMe = 1
+        ORDER BY a.createdAt DESC
+    """)
+    fun getLikedActfiles(): Flow<List<ActfileWithUser>>
+
+    @Query("""
+        SELECT DISTINCT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe, a.category 
+        FROM actfiles a 
+        INNER JOIN users u ON a.userId = u.id 
+        INNER JOIN actfile_comments c ON a.id = c.actfileId
+        WHERE c.userId = :userId
+        ORDER BY a.createdAt DESC
+    """)
+    fun getCommentedActfiles(userId: String): Flow<List<ActfileWithUser>>
 
     @Query("DELETE FROM actfiles WHERE id = :id")
     suspend fun deleteActfileLocal(id: String)
@@ -128,7 +147,7 @@ interface FollowDao {
     fun getFollowingIdsFlow(followerId: String): Flow<List<String>>
 
     @Query("""
-        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe 
+        SELECT a.id, a.userId, u.username, u.avatarUrl, u.isVerified, a.content, a.tags, a.likesCount, a.viewsCount, a.commentsCount, a.createdAt, a.isLikedByMe AS isLikedByMe, a.category 
         FROM actfiles a 
         INNER JOIN users u ON a.userId = u.id 
         WHERE a.userId IN (SELECT followingId FROM follows WHERE followerId = :followerId) OR a.userId = :followerId

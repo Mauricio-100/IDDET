@@ -54,7 +54,11 @@ fun SplashScreen(onTimeout: () -> Unit) {
     }
 
     LaunchedEffect(key1 = true) {
-        permissionLauncher.launch(permissionsToRequest.toTypedArray())
+        try {
+            permissionLauncher.launch(permissionsToRequest.toTypedArray())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         
         // Animation sequence
         launch {

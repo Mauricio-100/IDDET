@@ -24,10 +24,11 @@ data class ActfileNetwork(
     val username: String,
     val avatar_url: String?,
     val is_verified: Boolean,
-    val liked: Boolean
+    val liked: Boolean,
+    val category: String? = null
 )
 
-data class PublishActfileRequest(val content: String)
+data class PublishActfileRequest(val content: String, val category: String? = null)
 
 data class UserProfileNetwork(
     val id: String,
@@ -60,6 +61,7 @@ data class ConversationNetwork(
     val avatar_url: String?,
     val last_message: String?,
     val last_message_time: String?,
+    val unread_count: Int? = 0,
     val is_online: Boolean
 )
 
@@ -121,7 +123,8 @@ data class ActfileCommentListResponse(
 data class UpdateProfileRequest(
     val bio: String? = null,
     val avatar_url: String? = null,
-    val username: String? = null
+    val username: String? = null,
+    val preferred_category: String? = null
 )
 
 interface ApiService {

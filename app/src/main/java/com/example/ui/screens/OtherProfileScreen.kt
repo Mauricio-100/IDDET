@@ -114,10 +114,9 @@ fun OtherProfileScreen(viewModel: IddetViewModel, navController: NavController, 
 
                     if (profileUser.bio.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = profileUser.bio,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        com.example.ui.components.MarkdownActfile(
+                            content = profileUser.bio,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 

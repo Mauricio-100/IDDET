@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Create
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Visibility
@@ -18,6 +26,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.unit.sp
 import com.example.data.ActfileWithUser
 import com.example.ui.IddetViewModel
 import com.example.ui.components.ActfileCard
@@ -38,19 +50,33 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: IddetViewModel, navController: NavController) {
+fun HomeScreen(viewModel: IddetViewModel, navController: NavController, onOpenDrawer: () -> Unit) {
     val actfiles by viewModel.actfiles.collectAsStateWithLifecycle()
     val followedActfiles by viewModel.followedActfiles.collectAsStateWithLifecycle()
     val recommendedUsers by viewModel.giants.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val preferredCategory = currentUser?.preferredCategory ?: "@(fun)"
     
     var feedTab by remember { mutableStateOf(0) } // 0: For You, 1: Following
-    var showComposer by remember { mutableStateOf(false) }
+    val showComposer by viewModel.showComposer.collectAsStateWithLifecycle()
+    var selectedCategoryFilter by remember { mutableStateOf<String?>(null) }
     
-    val activeActfiles = remember(feedTab, actfiles, followedActfiles) {
-        when (feedTab) {
+    val activeActfiles = remember(feedTab, actfiles, followedActfiles, preferredCategory, selectedCategoryFilter) {
+        val baseList = when (feedTab) {
             0 -> actfiles
             1 -> followedActfiles
             else -> actfiles.shuffled()
+        }
+        val sortedList = if (feedTab == 0 && preferredCategory.isNotBlank()) {
+            baseList.sortedWith(compareByDescending { it.category == preferredCategory })
+        } else {
+            baseList
+        }
+        
+        if (selectedCategoryFilter != null) {
+            sortedList.filter { it.category?.equals(selectedCategoryFilter, ignoreCase = true) == true }
+        } else {
+            sortedList
         }
     }
     
@@ -59,41 +85,32 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController) {
     
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        floatingActionButton = {
-            // Hide FAB when app bar is hiding
-            if (scrollBehavior.state.heightOffset > -50f) {
-                FloatingActionButton(
-                    onClick = { showComposer = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create Actfile")
-                }
-            }
-        },
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("IDDET Feed", fontWeight = FontWeight.Bold) },
-                    actions = {
-                        val notifications by viewModel.notifications.collectAsState()
-                        val unreadCount = notifications.count { !it.isRead }
-                        
-                        IconButton(onClick = { navController.navigate("notifications") }) {
-                            BadgedBox(
-                                badge = {
-                                    if (unreadCount > 0) {
-                                        Badge { Text(unreadCount.toString()) }
-                                    }
-                                }
-                            ) {
-                                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
-                            }
-                        }
-                        IconButton(onClick = { viewModel.refreshActfiles() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Image(
+                                painter = painterResource(id = com.example.R.drawable.iddet_cat_logo_1783909130023),
+                                contentDescription = "IDDET Logo",
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("IDDET", fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
                         }
                     },
+                    navigationIcon = {
+                        IconButton(onClick = { onOpenDrawer() }) {
+                            Icon(Icons.Filled.Menu, contentDescription = "Ouvrir le menu")
+                        }
+                    },
+                    actions = {},
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
                         titleContentColor = MaterialTheme.colorScheme.onBackground
@@ -121,7 +138,7 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController) {
                         onClick = { feedTab = 2 },
                         text = { 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Shuffle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Outlined.Shuffle, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Random", fontWeight = FontWeight.Bold)
                             }
@@ -136,6 +153,65 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                    .padding(vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // "All" chip
+                item {
+                    val isSelected = selectedCategoryFilter == null
+                    Surface(
+                        onClick = { selectedCategoryFilter = null },
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = 1.dp,
+                            color = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🎯", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Tout", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                
+                items(com.example.ui.components.APP_CATEGORIES) { cat ->
+                    val isSelected = selectedCategoryFilter == cat.id
+                    Surface(
+                        onClick = { selectedCategoryFilter = cat.id },
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) cat.color else MaterialTheme.colorScheme.surface,
+                        contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = 1.dp,
+                            color = if (isSelected) Color.Transparent else cat.color.copy(alpha = 0.4f)
+                        ),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(cat.emoji, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(cat.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
@@ -214,6 +290,9 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController) {
                                     navController.navigate("profile/${u.id}")
                                 }
                             }
+                        },
+                        onCategoryClick = { categoryId ->
+                            selectedCategoryFilter = categoryId
                         }
                     )
                 }
@@ -238,10 +317,10 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController) {
         
         if (showComposer) {
             ActfileComposer(
-                onDismiss = { showComposer = false },
-                onPublish = { content, tags ->
-                    viewModel.publishActfile(content, tags)
-                    showComposer = false
+                onDismiss = { viewModel.setShowComposer(false) },
+                onPublish = { content, tags, category ->
+                    viewModel.publishActfile(content, tags, category)
+                    viewModel.setShowComposer(false)
                 }
             )
         }
@@ -252,10 +331,13 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController) {
 @Composable
 fun ActfileComposer(
     onDismiss: () -> Unit,
-    onPublish: (String, String) -> Unit
+    onPublish: (String, String, String?) -> Unit
 ) {
     var content by remember { mutableStateOf("") }
     var tags by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("@(fun)") }
+    var showCategoryPickerByPublish by remember { mutableStateOf(false) }
+    val selectedCatInfo = com.example.ui.components.getCategoryById(selectedCategory)
     
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -277,7 +359,49 @@ fun ActfileComposer(
                     .weight(1f),
                 placeholder = "Write your markdown actfile here...\n\nHint: Use the toolbar for bold, links, etc."
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Category selector block
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    .clickable { showCategoryPickerByPublish = true }
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background((selectedCatInfo?.color ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(selectedCatInfo?.emoji ?: "🎭", fontSize = 16.sp)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Catégorie de la publication", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${selectedCatInfo?.name ?: "Fun"} (${selectedCategory})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = selectedCatInfo?.color ?: MaterialTheme.colorScheme.primary
+                    )
+                }
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.ArrowDropDown,
+                    contentDescription = "Changer",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = tags,
                 onValueChange = { tags = it },
@@ -290,7 +414,7 @@ fun ActfileComposer(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    if (content.isNotBlank()) onPublish(content, tags)
+                    if (content.isNotBlank()) onPublish(content, tags, selectedCategory)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -300,6 +424,86 @@ fun ActfileComposer(
                 Text("Publish Actfile")
             }
             Spacer(modifier = Modifier.height(16.dp))
+        }
+        
+        if (showCategoryPickerByPublish) {
+            val categories = com.example.ui.components.APP_CATEGORIES
+            AlertDialog(
+                onDismissRequest = { showCategoryPickerByPublish = false },
+                title = {
+                    Text(
+                        text = "🏷️ Sélectionner une catégorie",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                text = {
+                    Column(modifier = Modifier.fillMaxHeight(0.6f)) {
+                        HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(categories) { cat ->
+                                val isSelected = cat.id == selectedCategory
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(
+                                            if (isSelected) cat.color.copy(alpha = 0.15f) 
+                                            else Color.Transparent
+                                        )
+                                        .clickable {
+                                            selectedCategory = cat.id
+                                            showCategoryPickerByPublish = false
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(cat.color.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(cat.emoji, fontSize = 18.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "${cat.name} (${cat.id})",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) cat.color else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = cat.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = androidx.compose.material.icons.Icons.Default.Check,
+                                            contentDescription = "Sélectionné",
+                                            tint = cat.color,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showCategoryPickerByPublish = false }) {
+                        Text("Fermer")
+                    }
+                }
+            )
         }
     }
 }

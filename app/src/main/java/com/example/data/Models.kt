@@ -22,7 +22,8 @@ data class User(
     val email: String? = null,
     val phoneNumber: String? = null,
     val birthDate: String? = null,
-    val zodiacSign: String? = null
+    val zodiacSign: String? = null,
+    val preferredCategory: String? = "@(fun)"
 )
 
 @Entity(tableName = "actfiles")
@@ -35,7 +36,8 @@ data class Actfile(
     val viewsCount: Int = 0,
     val commentsCount: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
-    val isLikedByMe: Boolean = false
+    val isLikedByMe: Boolean = false,
+    val category: String? = null
 )
 
 @Entity(tableName = "messages")
@@ -44,6 +46,7 @@ data class Message(
     val senderId: String,
     val receiverId: String,
     val content: String,
+    val type: String = "text",
     val isRead: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
@@ -68,7 +71,8 @@ data class ActfileWithUser(
     val viewsCount: Int,
     val commentsCount: Int,
     val createdAt: Long,
-    val isLikedByMe: Boolean = false
+    val isLikedByMe: Boolean = false,
+    val category: String? = null
 )
 
 @Entity(tableName = "actfile_comments")

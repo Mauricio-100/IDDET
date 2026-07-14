@@ -293,10 +293,10 @@ fun MarkdownActfile(
                         contentDescription = block.altText ?: "Image Markdown",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
-                            .padding(vertical = 4.dp)
-                            .clip(MaterialTheme.shapes.medium),
-                        contentScale = ContentScale.Crop
+                            .padding(vertical = 8.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                        contentScale = ContentScale.FillWidth
                     )
                 }
                 
@@ -636,7 +636,7 @@ fun parseMarkdownBlocks(content: String): List<MarkdownBlock> {
         }
         
         // 7. Image Block ([IMG](url) or ![alt](url))
-        val imgRegex = Regex("^\\[IMG\\]\\((.*?)\\)$")
+        val imgRegex = Regex("(?i)^\\[img\\]\\((.*?)\\)$")
         val altImgRegex = Regex("^!\\[(.*?)\\]\\((.*?)\\)$")
         val trimLine = line.trim()
         if (imgRegex.matches(trimLine)) {
@@ -666,7 +666,7 @@ fun parseMarkdownBlocks(content: String): List<MarkdownBlock> {
 
 // Parses visual image splits inside paragraphs
 fun parseMixedParagraph(text: String): List<MarkdownBlock> {
-    val regex = Regex("(?:\\[IMG\\]|!\\[(.*?)\\])\\((.*?)\\)")
+    val regex = Regex("(?i)(?:\\[img\\]|!\\[(.*?)\\])\\((.*?)\\)")
     val blocks = mutableListOf<MarkdownBlock>()
     var lastIndex = 0
     val matches = regex.findAll(text)

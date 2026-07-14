@@ -9,6 +9,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -34,6 +44,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.ui.IddetViewModel
@@ -108,7 +119,11 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
             if (isGranted) {
                 val uri = createImageUri()
                 capturedImageUri = uri
-                cameraLauncher.launch(uri)
+                try {
+                    cameraLauncher.launch(uri)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Aucune application caméra disponible", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 Toast.makeText(context, "Permission caméra refusée", Toast.LENGTH_SHORT).show()
             }
@@ -135,7 +150,7 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                            Icon(Icons.Outlined.Notifications, contentDescription = "Notifications")
                         }
                     }
                     IconButton(
@@ -153,11 +168,11 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                         if (isRefreshing) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh Profile")
+                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh Profile")
                         }
                     }
                     IconButton(onClick = { viewModel.logout() }) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
+                        Icon(Icons.AutoMirrored.Outlined.ExitToApp, contentDescription = "Logout")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -305,10 +320,9 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                     
                     if (user.bio.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = user.bio,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        com.example.ui.components.MarkdownActfile(
+                            content = user.bio,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 
@@ -396,7 +410,7 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                             shape = RoundedCornerShape(20.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Modifier le profil")
                         }
@@ -410,11 +424,156 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                                 ),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                             ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Vérifier mon compte")
                             }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    var showCategorySelectorDialog by remember { mutableStateOf(false) }
+                    val currentPrefCategory = user.preferredCategory ?: "@(fun)"
+                    val categoryInfo = com.example.ui.components.getCategoryById(currentPrefCategory)
+                    
+                    Surface(
+                        onClick = { showCategorySelectorDialog = true },
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, 
+                            (categoryInfo?.color ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background((categoryInfo?.color ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(categoryInfo?.emoji ?: "🎭", fontSize = 20.sp)
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Catégorie de pertinence", 
+                                    style = MaterialTheme.typography.bodySmall, 
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${categoryInfo?.name ?: "Fun"} (${currentPrefCategory})",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = categoryInfo?.color ?: MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Edit,
+                                contentDescription = "Modifier",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    if (showCategorySelectorDialog) {
+                        val categories = com.example.ui.components.APP_CATEGORIES
+                        AlertDialog(
+                            onDismissRequest = { showCategorySelectorDialog = false },
+                            title = {
+                                Text(
+                                    text = "🎯 Choisir ma catégorie",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            },
+                            text = {
+                                Column(modifier = Modifier.fillMaxHeight(0.7f)) {
+                                    Text(
+                                        text = "Sélectionnez votre centre d'intérêt principal pour personnaliser votre fil d'actualité.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(bottom = 12.dp)
+                                    )
+                                    HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
+                                    LazyColumn(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        items(categories) { cat ->
+                                            val isSelected = cat.id.equals(currentPrefCategory, ignoreCase = true)
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(
+                                                        if (isSelected) cat.color.copy(alpha = 0.15f) 
+                                                        else Color.Transparent
+                                                    )
+                                                    .clickable {
+                                                        viewModel.updateProfile(
+                                                            bio = user.bio,
+                                                            privacySetting = user.privacySetting,
+                                                            preferredCategory = cat.id
+                                                        )
+                                                        showCategorySelectorDialog = false
+                                                        Toast.makeText(context, "Catégorie préférée mise à jour : ${cat.name}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(36.dp)
+                                                        .clip(CircleShape)
+                                                        .background(cat.color.copy(alpha = 0.2f)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(cat.emoji, fontSize = 18.sp)
+                                                }
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = "${cat.name} (${cat.id})",
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (isSelected) cat.color else MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                    Text(
+                                                        text = cat.description,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                                if (isSelected) {
+                                                    Icon(
+                                                        imageVector = androidx.compose.material.icons.Icons.Default.Check,
+                                                        contentDescription = "Sélectionné",
+                                                        tint = cat.color,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showCategorySelectorDialog = false }) {
+                                    Text("Fermer")
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -794,7 +953,11 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                         ) {
                             val uri = createImageUri()
                             capturedImageUri = uri
-                            cameraLauncher.launch(uri)
+                            try {
+                                cameraLauncher.launch(uri)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Aucune application caméra disponible", Toast.LENGTH_SHORT).show()
+                            }
                         } else {
                             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
@@ -804,7 +967,11 @@ fun ProfileScreen(viewModel: IddetViewModel, navController: NavController) {
                     headlineContent = { Text("Choisir depuis la galerie") },
                     leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
                     modifier = Modifier.clickable {
-                        photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        try {
+                            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Aucune application de galerie disponible", Toast.LENGTH_SHORT).show()
+                        }
                         showImageOptions = false
                     }
                 )

@@ -16,6 +16,13 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
 
     val currentUser: StateFlow<User?> = repository.currentUser
     
+    private val _showComposer = MutableStateFlow(false)
+    val showComposer: StateFlow<Boolean> = _showComposer.asStateFlow()
+
+    fun setShowComposer(show: Boolean) {
+        _showComposer.value = show
+    }
+    
     val actfiles = repository.getAllActfiles().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -46,6 +53,16 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         viewModelScope.launch {
             repository.refreshActfiles()
         }
+        viewModelScope.launch {
+            while (true) {
+                try {
+                    repository.refreshNotifications()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                kotlinx.coroutines.delay(15000)
+            }
+        }
     }
 
     // Properly scoped flows that update when currentUser changes, without causing infinite loops
@@ -57,13 +74,7 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         emptyList()
     )
 
-    val chatPartners: StateFlow<List<User>> = currentUser.flatMapLatest {
-        repository.getChatPartners()
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        emptyList()
-    )
+    val conversations: StateFlow<List<com.example.data.ConversationNetwork>> = repository.conversations
 
     private val _searchQuery = MutableStateFlow("")
     val searchUsersResult: StateFlow<List<User>> = _searchQuery.flatMapLatest { query ->
@@ -113,6 +124,22 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         emptyList()
     )
 
+    val likedActfiles: StateFlow<List<ActfileWithUser>> = currentUser.flatMapLatest {
+        repository.getLikedActfiles()
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        emptyList()
+    )
+
+    val commentedActfiles: StateFlow<List<ActfileWithUser>> = currentUser.flatMapLatest { user ->
+        repository.getCommentedActfiles(user?.id ?: "")
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        emptyList()
+    )
+
     fun markNotificationAsRead(id: String) {
         viewModelScope.launch {
             repository.markNotificationAsRead(id)
@@ -133,10 +160,11 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         email: String? = null,
         phoneNumber: String? = null,
         birthDate: String? = null,
-        zodiacSign: String? = null
+        zodiacSign: String? = null,
+        preferredCategory: String? = null
     ) {
         viewModelScope.launch {
-            repository.updateProfile(username, avatarUrl, bio, privacySetting, email, phoneNumber, birthDate, zodiacSign)
+            repository.updateProfile(username, avatarUrl, bio, privacySetting, email, phoneNumber, birthDate, zodiacSign, preferredCategory)
         }
     }
 
@@ -148,9 +176,9 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         repository.logout()
     }
 
-    fun publishActfile(content: String, tags: String = "") {
+    fun publishActfile(content: String, tags: String = "", category: String? = null) {
         viewModelScope.launch {
-            repository.publishActfile(content, tags)
+            repository.publishActfile(content, tags, category)
         }
     }
 
@@ -202,9 +230,9 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
         }
     }
 
-    fun sendMessage(receiverId: String, content: String) {
+    fun sendMessage(receiverId: String, content: String, type: String = "text") {
         viewModelScope.launch {
-            repository.sendMessage(receiverId, content)
+            repository.sendMessage(receiverId, content, type)
         }
     }
 

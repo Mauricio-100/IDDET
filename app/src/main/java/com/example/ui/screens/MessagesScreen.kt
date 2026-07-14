@@ -8,10 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.animation.core.*
-import androidx.compose.ui.draw.scale
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,19 +18,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
-import com.example.data.User
+import com.example.data.ConversationNetwork
 import com.example.ui.IddetViewModel
 import com.example.ui.components.VerificationBadge
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagesScreen(viewModel: IddetViewModel, navController: NavController) {
-    val partners by viewModel.chatPartners.collectAsStateWithLifecycle()
+    val conversations by viewModel.conversations.collectAsStateWithLifecycle()
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         viewModel.refreshConversations()
@@ -45,9 +47,14 @@ fun MessagesScreen(viewModel: IddetViewModel, navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Messages", fontWeight = FontWeight.Bold) },
+                title = { Text("Discussions", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
+                actions = {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -55,24 +62,28 @@ fun MessagesScreen(viewModel: IddetViewModel, navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
         ) {
-            if (partners.isEmpty()) {
+            if (conversations.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        text = "No messages yet. Find someone to chat with!",
+                        text = "Aucune discussion pour le moment.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    items(partners, key = { it.id }) { partner ->
-                        ChatPartnerItem(
-                            user = partner,
-                            onClick = { navController.navigate("chat/${partner.id}") }
+                    items(conversations, key = { it.id }) { conv ->
+                        ConversationItem(
+                            conv = conv,
+                            onClick = { navController.navigate("chat/${conv.user_id}") }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 72.dp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
                         )
                     }
                 }
@@ -81,111 +92,133 @@ fun MessagesScreen(viewModel: IddetViewModel, navController: NavController) {
     }
 }
 
+fun formatTime(isoString: String?): String {
+    if (isoString == null) return ""
+    return try {
+        val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        val date = format.parse(isoString) ?: return ""
+        val outFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        outFormat.format(date)
+    } catch (e: Exception) {
+        ""
+    }
+}
+
 @Composable
-fun ChatPartnerItem(user: User, onClick: () -> Unit) {
-    // Mock status logic based on user ID for demonstration
-    val isOnline = user.id.hashCode() % 2 == 0
-    val isTyping = user.id.hashCode() % 3 == 0
-    val isRecordingVoice = user.id.hashCode() % 5 == 0 && !isTyping
-    val isRead = user.id.hashCode() % 7 == 0
-
-    val infiniteTransition = rememberInfiniteTransition(label = "infinite")
-    val typingAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "alpha"
-    )
-    val micScale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "scale"
-    )
-
+fun ConversationItem(conv: ConversationNetwork, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.size(48.dp)
         ) {
-            if (!user.avatarUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = user.avatarUrl,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = user.username.firstOrNull()?.toString()?.uppercase() ?: "?",
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.Bold
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!conv.avatar_url.isNullOrBlank()) {
+                    AsyncImage(
+                        model = conv.avatar_url,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = conv.username.firstOrNull()?.toString()?.uppercase() ?: "?",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            if (conv.is_online) {
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .align(Alignment.BottomEnd)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(Color(0xFF10B981)) // Sleek Emerald Green online status
+                    )
+                }
             }
         }
+
         Spacer(modifier = Modifier.width(16.dp))
+
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = conv.username,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (conv.username.length > 5) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        VerificationBadge(userName = conv.username)
+                    }
+                }
                 Text(
-                    text = user.username,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = formatTime(conv.last_message_time),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if ((conv.unread_count ?: 0) > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
-                if (user.isVerified) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    VerificationBadge(userName = user.username)
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                if (isOnline) {
-                    Text("!!", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
-                } else {
-                    Text("!", color = Color.Gray, fontWeight = FontWeight.Bold)
-                }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (isRead) {
-                    Text("!! ", color = Color(0xFF2196F3), fontWeight = FontWeight.Bold)
-                }
-                if (isTyping) {
-                    Text(
-                        text = "°•°•°?",
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = typingAlpha),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                } else if (isRecordingVoice) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Recording",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp).scale(micScale)
-                    )
-                } else {
-                    Text(
-                        text = "Tap to view conversation",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
+            
+            Spacer(modifier = Modifier.height(2.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (conv.last_message?.startsWith("http") == true && conv.last_message.contains("voice_messages")) "🎤 Message vocal" else (conv.last_message ?: ""),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if ((conv.unread_count ?: 0) > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = (conv.unread_count ?: 0).toString(),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
     }
 }
