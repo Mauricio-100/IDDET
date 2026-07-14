@@ -36,6 +36,7 @@ fun SearchScreen(viewModel: IddetViewModel, navController: NavController) {
     val giants by viewModel.giants.collectAsStateWithLifecycle()
     val searchUsersResult by viewModel.searchUsersResult.collectAsStateWithLifecycle()
     val searchActfilesResult by viewModel.searchActfilesResult.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     
     var selectedTab by remember { mutableStateOf(0) } // 0: Users, 1: Actfiles
 
@@ -146,7 +147,7 @@ fun SearchScreen(viewModel: IddetViewModel, navController: NavController) {
                         }
                     } else {
                         items(searchActfilesResult, key = { it.id }) { actfile ->
-                            val isMine = actfile.userId == viewModel.currentUser.value?.id
+                            val isMine = actfile.userId == currentUser?.id
                             ActfileCard(
                                 actfile = actfile,
                                 onLike = { viewModel.likeActfile(it) },

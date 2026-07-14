@@ -22,6 +22,20 @@ class IddetViewModel(private val repository: IddetRepository) : ViewModel() {
     fun setShowComposer(show: Boolean) {
         _showComposer.value = show
     }
+
+    private val _feedTab = MutableStateFlow(0)
+    val feedTab: StateFlow<Int> = _feedTab.asStateFlow()
+
+    fun setFeedTab(tab: Int) {
+        _feedTab.value = tab
+    }
+
+    private val _selectedCategoryFilter = MutableStateFlow<String?>(null)
+    val selectedCategoryFilter: StateFlow<String?> = _selectedCategoryFilter.asStateFlow()
+
+    fun setSelectedCategoryFilter(category: String?) {
+        _selectedCategoryFilter.value = category
+    }
     
     val actfiles = repository.getAllActfiles().stateIn(
         viewModelScope,

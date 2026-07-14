@@ -39,6 +39,7 @@ fun DiscussionScreen(
 ) {
     val actfile by viewModel.getActfile(actfileId).collectAsStateWithLifecycle(initialValue = null)
     val comments by viewModel.getComments(actfileId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     
     var replyText by remember { mutableStateOf("") }
     var isPreviewMode by remember { mutableStateOf(false) }
@@ -147,7 +148,7 @@ fun DiscussionScreen(
                                         }
                                     }
                                     
-                                    val myId = viewModel.currentUser.value?.id
+                                    val myId = currentUser?.id
                                     if (post.userId == myId) {
                                         IconButton(
                                             onClick = {

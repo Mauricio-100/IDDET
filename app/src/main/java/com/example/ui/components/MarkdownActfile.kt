@@ -304,7 +304,7 @@ fun MarkdownActfile(
                     val formattedText = parseRichMarkdownStyles(block.text, primaryColor, isMine)
                     MarkdownText(
                         annotatedString = formattedText,
-                        style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
+                        style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 19.sp),
                         onMentionClick = onMentionClick,
                         textColor = textColor
                     )

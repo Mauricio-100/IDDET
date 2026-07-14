@@ -57,9 +57,9 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController, onOpenDr
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val preferredCategory = currentUser?.preferredCategory ?: "@(fun)"
     
-    var feedTab by remember { mutableStateOf(0) } // 0: For You, 1: Following
+    val feedTab by viewModel.feedTab.collectAsStateWithLifecycle()
     val showComposer by viewModel.showComposer.collectAsStateWithLifecycle()
-    var selectedCategoryFilter by remember { mutableStateOf<String?>(null) }
+    val selectedCategoryFilter by viewModel.selectedCategoryFilter.collectAsStateWithLifecycle()
     
     val activeActfiles = remember(feedTab, actfiles, followedActfiles, preferredCategory, selectedCategoryFilter) {
         val baseList = when (feedTab) {
@@ -86,66 +86,36 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController, onOpenDr
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            Image(
-                                painter = painterResource(id = com.example.R.drawable.iddet_cat_logo_1783909130023),
-                                contentDescription = "IDDET Logo",
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("IDDET", fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { onOpenDrawer() }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Ouvrir le menu")
-                        }
-                    },
-                    actions = {},
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground
-                    ),
-                    scrollBehavior = scrollBehavior
-                )
-                // Feed Selector
-                TabRow(
-                    selectedTabIndex = feedTab,
+            TopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Image(
+                            painter = painterResource(id = com.example.R.drawable.iddet_cat_logo_1783909130023),
+                            contentDescription = "IDDET Logo",
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("IDDET", fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(Icons.Filled.Menu, contentDescription = "Ouvrir le menu")
+                    }
+                },
+                actions = {},
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Tab(
-                        selected = feedTab == 0,
-                        onClick = { feedTab = 0 },
-                        text = { Text("For You", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = feedTab == 1,
-                        onClick = { feedTab = 1 },
-                        text = { Text("Following", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = feedTab == 2,
-                        onClick = { feedTab = 2 },
-                        text = { 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.Shuffle, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Random", fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    )
-                }
-            }
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                ),
+                scrollBehavior = scrollBehavior
+            )
         }
     ) { padding ->
         Column(
@@ -153,65 +123,6 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController, onOpenDr
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                    .padding(vertical = 10.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // "All" chip
-                item {
-                    val isSelected = selectedCategoryFilter == null
-                    Surface(
-                        onClick = { selectedCategoryFilter = null },
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = 1.dp,
-                            color = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        ),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("🎯", fontSize = 14.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Tout", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-                
-                items(com.example.ui.components.APP_CATEGORIES) { cat ->
-                    val isSelected = selectedCategoryFilter == cat.id
-                    Surface(
-                        onClick = { selectedCategoryFilter = cat.id },
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isSelected) cat.color else MaterialTheme.colorScheme.surface,
-                        contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = 1.dp,
-                            color = if (isSelected) Color.Transparent else cat.color.copy(alpha = 0.4f)
-                        ),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(cat.emoji, fontSize = 14.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(cat.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-            }
-
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
@@ -266,7 +177,7 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController, onOpenDr
                 }
 
                 items(activeActfiles, key = { it.id }) { actfile ->
-                    val isMine = actfile.userId == viewModel.currentUser.value?.id
+                    val isMine = actfile.userId == currentUser?.id
                     ActfileCard(
                         actfile = actfile,
                         onLike = { viewModel.likeActfile(it) },
@@ -292,7 +203,7 @@ fun HomeScreen(viewModel: IddetViewModel, navController: NavController, onOpenDr
                             }
                         },
                         onCategoryClick = { categoryId ->
-                            selectedCategoryFilter = categoryId
+                            viewModel.setSelectedCategoryFilter(categoryId)
                         }
                     )
                 }
