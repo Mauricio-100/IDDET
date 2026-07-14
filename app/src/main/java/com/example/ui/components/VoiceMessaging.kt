@@ -35,23 +35,11 @@ fun VoiceMessagePlayer(
     val voiceData = remember(content) { parseVoiceMessage(content) } ?: return
     var isPlaying by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
-    val durationMs = voiceData.durationSeconds * 1000
 
-    val coroutineScope = rememberCoroutineScope()
-
-    // Handle playback ticker
-    LaunchedEffect(isPlaying) {
-        if (isPlaying) {
-            val startTime = System.currentTimeMillis() - (progress * durationMs).toLong()
-            while (isPlaying && progress < 1.0f) {
-                delay(50)
-                val elapsed = System.currentTimeMillis() - startTime
-                progress = (elapsed.toFloat() / durationMs).coerceIn(0f, 1f)
-                if (progress >= 1.0f) {
-                    isPlaying = false
-                    progress = 0f
-                }
-            }
+    // Clean up audio playback on composable disposal
+    DisposableEffect(content) {
+        onDispose {
+            com.example.utils.VoiceSynthPlayer.stop()
         }
     }
 
@@ -81,7 +69,24 @@ fun VoiceMessagePlayer(
     ) {
         // Play / Pause Button
         IconButton(
-            onClick = { isPlaying = !isPlaying },
+            onClick = {
+                if (isPlaying) {
+                    com.example.utils.VoiceSynthPlayer.stop()
+                    isPlaying = false
+                    progress = 0f
+                } else {
+                    isPlaying = true
+                    com.example.utils.VoiceSynthPlayer.play(
+                        amplitudes = voiceData.amplitudes,
+                        durationSeconds = voiceData.durationSeconds,
+                        onProgress = { p -> progress = p },
+                        onFinished = {
+                            isPlaying = false
+                            progress = 0f
+                        }
+                    )
+                }
+            },
             modifier = Modifier
                 .size(36.dp)
                 .background(

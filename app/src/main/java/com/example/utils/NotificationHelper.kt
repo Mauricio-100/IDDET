@@ -97,12 +97,15 @@ object NotificationHelper {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setDefaults(NotificationCompat.DEFAULT_LIGHTS or NotificationCompat.DEFAULT_VIBRATE) // No standard system default sound
                 .setCategory(NotificationCompat.CATEGORY_SOCIAL)
                 .setSubText("S-3 CMO")
 
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.notify(idHash, builder.build())
+
+            // Play cute kitten meow sound!
+            CatSoundPlayer.playCuteMeow()
         }
     }
 

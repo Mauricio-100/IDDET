@@ -180,7 +180,7 @@ fun ActfileCard(
             // Post Content
             MarkdownActfile(
                 content = actfile.content,
-                compactOpenGraph = true,
+                compactOpenGraph = false,
                 onMentionClick = onMentionClick
             )
             
